@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: vastraco
+  namespace: argocd
+spec:
+  description: VastraCo e-commerce platform
+  sourceRepos:
+    - https://github.com/VastraCo-AWS/vastraCo-helm
+  destinations:
+    - namespace: production
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: "secrets-store.csi.x-k8s.io"
+      kind: SecretProviderClass
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: admin
+      policies:
+        - p, proj:vastraco:admin, applications, *, vastraco/*, allow

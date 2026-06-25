@@ -1,0 +1,241 @@
+global:
+  namespace: production
+  aws:
+    region: us-east-1
+    accountId: "078426574503"
+
+services:
+  frontend:
+    enabled: true
+    image:
+      repository: 078426574503.dkr.ecr.us-east-1.amazonaws.com/frontend-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicaCount: 2
+    port: 80
+    servicePort: 80
+    irsa:
+      enabled: false
+      roleArn: ""
+    serviceAccount:
+      # Frontend does NOT access any AWS API. Runs under namespace default ServiceAccount.
+      create: false
+      name: ""
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 15
+      periodSeconds: 20
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    env: []
+    secretProviderClass: ""
+
+  user-service:
+    enabled: true
+    image:
+      repository: 078426574503.dkr.ecr.us-east-1.amazonaws.com/user-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicaCount: 2
+    port: 3001
+    servicePort: 3001
+    irsa:
+      enabled: true
+      roleArn: ""  # Set in values-production.yaml
+    serviceAccount:
+      create: true
+      name: user-service-sa  # Must match Terraform IRSA trust policy exactly
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 3001
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 3001
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 5
+    configMap:
+      PORT: "3001"
+      USER_DB_PORT: "5432"
+      USER_DB_NAME: "users_db"
+    secretProviderClass: user-service-secrets
+    env: []
+
+  product-service:
+    enabled: true
+    image:
+      repository: 078426574503.dkr.ecr.us-east-1.amazonaws.com/product-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicaCount: 2
+    port: 3002
+    servicePort: 3002
+    irsa:
+      enabled: true
+      roleArn: ""  # Set in values-production.yaml
+    serviceAccount:
+      create: true
+      name: product-service-sa  # Must match Terraform IRSA trust policy exactly
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 3002
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 3002
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 5
+    configMap:
+      PORT: "3002"
+      PRODUCT_DB_PORT: "5432"
+      PRODUCT_DB_NAME: "products_db"
+    secretProviderClass: product-service-secrets
+    env: []
+
+  order-service:
+    enabled: true
+    image:
+      repository: 078426574503.dkr.ecr.us-east-1.amazonaws.com/order-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicaCount: 2
+    port: 3003
+    servicePort: 3003
+    irsa:
+      enabled: true
+      roleArn: ""  # Set in values-production.yaml
+    serviceAccount:
+      create: true
+      name: order-service-sa  # Must match Terraform IRSA trust policy exactly
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 3003
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 3003
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 5
+    configMap:
+      PORT: "3003"
+      ORDER_DB_PORT: "5432"
+      ORDER_DB_NAME: "orders_db"
+      PRODUCT_SERVICE_URL: "http://product-service:3002"
+    secretProviderClass: order-service-secrets
+    env: []
+
+  ai-service:
+    enabled: true
+    image:
+      repository: 078426574503.dkr.ecr.us-east-1.amazonaws.com/ai-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicaCount: 2
+    port: 3004
+    servicePort: 3004
+    irsa:
+      enabled: true
+      roleArn: ""  # Set in values-production.yaml
+    serviceAccount:
+      create: true
+      name: ai-service-sa  # Must match Terraform IRSA trust policy exactly
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+    livenessProbe:
+      httpGet:
+        path: /api/ai/health
+        port: 3004
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /api/ai/ready
+        port: 3004
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      failureThreshold: 5
+    configMap:
+      PRODUCT_SERVICE_URL: "http://product-service:3002"
+      ORDER_SERVICE_URL: "http://order-service:3003"
+    secretProviderClass: ai-service-secrets
+    env: []

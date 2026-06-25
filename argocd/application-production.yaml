@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vastraco-production
+  namespace: argocd
+spec:
+  project: vastraco
+  source:
+    repoURL: https://github.com/VastraCo-AWS/vastraCo-helm
+    targetRevision: main
+    path: charts/vastraco-services
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-production.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

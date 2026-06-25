@@ -1,0 +1,103 @@
+# One-time Job: create users_db, products_db, orders_db in RDS PostgreSQL.
+#
+# PREREQUISITES (in order):
+#   1. production namespace exists
+#        kubectl create namespace production   (or ArgoCD first sync)
+#   2. user-service-sa exists in production namespace
+#        kubectl apply on the Helm chart OR ArgoCD first sync
+#
+# HOW TO RUN:
+#   kubectl apply -f jobs/db-creation-job.yaml
+#   kubectl logs -f job/create-databases -n production
+#   kubectl delete -f jobs/db-creation-job.yaml   # cleanup after success
+#
+# HOW CREDENTIALS REACH THE JOB (no K8s Secrets):
+#   user-service-sa has IRSA → vastraco-production-irsa-user-service
+#   That role has secretsmanager:GetSecretValue on vastraco/*
+#   CSI driver fetches vastraco/db-creds and mounts fields as read-only files.
+#   The job reads files at runtime — nothing stored in etcd.
+---
+# Standalone SecretProviderClass for this job only.
+# Mounts only the three fields the job needs from vastraco/db-creds.
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: db-admin-secrets
+  namespace: production
+spec:
+  provider: aws
+  parameters:
+    region: us-east-1
+    objects: |
+      - objectName: "vastraco/db-creds"
+        objectType: "secretsmanager"
+        jmesPath:
+          - path: host
+            objectAlias: DB_HOST
+          - path: username
+            objectAlias: DB_USERNAME
+          - path: password
+            objectAlias: DB_PASSWORD
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-databases
+  namespace: production
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: user-service-sa
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+      volumes:
+        - name: db-creds
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: db-admin-secrets
+      containers:
+        - name: create-dbs
+          image: postgres:16
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              DB_HOST=$(cat /mnt/db-creds/DB_HOST)
+              DB_USER=$(cat /mnt/db-creds/DB_USERNAME)
+              export PGPASSWORD=$(cat /mnt/db-creds/DB_PASSWORD)
+
+              echo "Connected to: $DB_HOST as $DB_USER"
+
+              psql -h "$DB_HOST" -U "$DB_USER" -d vastraco <<'SQL'
+              SELECT 'CREATE DATABASE users_db'
+                WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'users_db')\gexec
+              SELECT 'CREATE DATABASE products_db'
+                WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'products_db')\gexec
+              SELECT 'CREATE DATABASE orders_db'
+                WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'orders_db')\gexec
+              \l
+              SQL
+
+              echo "Done."
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: db-creds
+              mountPath: /mnt/db-creds
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi

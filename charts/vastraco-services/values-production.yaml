@@ -1,0 +1,47 @@
+global:
+  namespace: production
+  aws:
+    region: us-east-1
+    accountId: "078426574503"
+services:
+  frontend:
+    replicaCount: 2
+    image:
+      tag: 06dd0d5
+  user-service:
+    replicaCount: 2
+    image:
+      tag: 11fcd17
+    irsa:
+      enabled: true
+      roleArn: "arn:aws:iam::078426574503:role/vastraco-production-irsa-user-service"
+    env:
+      - name: PGSSLMODE
+        value: no-verify
+  product-service:
+    replicaCount: 2
+    image:
+      tag: 11fcd17
+    irsa:
+      enabled: true
+      roleArn: "arn:aws:iam::078426574503:role/vastraco-production-irsa-product-service"
+    env:
+      - name: PGSSLMODE
+        value: no-verify
+  order-service:
+    replicaCount: 2
+    image:
+      tag: 11fcd17
+    irsa:
+      enabled: true
+      roleArn: "arn:aws:iam::078426574503:role/vastraco-production-irsa-order-service"
+    env:
+      - name: PGSSLMODE
+        value: no-verify
+  ai-service:
+    replicaCount: 1
+    image:
+      tag: 06dd0d5
+    irsa:
+      enabled: true
+      roleArn: "arn:aws:iam::078426574503:role/vastraco-production-irsa-ai-service"

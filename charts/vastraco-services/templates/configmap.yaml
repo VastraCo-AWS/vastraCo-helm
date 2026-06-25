@@ -1,0 +1,22 @@
+{{/*
+One ConfigMap per service containing non-secret env vars.
+Secrets are injected via CSI Driver — never in ConfigMaps.
+*/}}
+{{- range $name, $svc := .Values.services }}
+{{- if and $svc.enabled $svc.configMap }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-config
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/component: microservice
+    {{- include "vastraco.labels" $ | nindent 4 }}
+data:
+  {{- range $key, $val := $svc.configMap }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

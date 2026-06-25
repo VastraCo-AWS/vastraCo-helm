@@ -1,0 +1,28 @@
+{{/*
+ClusterIP Services for all microservices.
+KGateway (not a LoadBalancer Service) is the sole ingress point.
+*/}}
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/component: microservice
+    {{- include "vastraco.labels" $ | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/component: microservice
+  ports:
+    - name: http
+      port: {{ $svc.servicePort }}
+      targetPort: {{ $svc.port }}
+      protocol: TCP
+{{- end }}
+{{- end }}
