@@ -7,11 +7,11 @@ services:
   frontend:
     replicaCount: 2
     image:
-      tag: 06dd0d5
+      tag: 164cb54
   user-service:
     replicaCount: 2
     image:
-      tag: 11fcd17
+      tag: 164cb54
     irsa:
       enabled: true
       roleArn: "arn:aws:iam::078426574503:role/vastraco-production-irsa-user-service"
@@ -21,7 +21,7 @@ services:
   product-service:
     replicaCount: 2
     image:
-      tag: 11fcd17
+      tag: 164cb54
     irsa:
       enabled: true
       roleArn: "arn:aws:iam::078426574503:role/vastraco-production-irsa-product-service"
@@ -31,7 +31,7 @@ services:
   order-service:
     replicaCount: 2
     image:
-      tag: 11fcd17
+      tag: 164cb54
     irsa:
       enabled: true
       roleArn: "arn:aws:iam::078426574503:role/vastraco-production-irsa-order-service"
@@ -41,7 +41,7 @@ services:
   ai-service:
     replicaCount: 1
     image:
-      tag: 06dd0d5
+      tag: 164cb54
     irsa:
       enabled: true
       roleArn: "arn:aws:iam::078426574503:role/vastraco-production-irsa-ai-service"
